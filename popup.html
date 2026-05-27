@@ -32,18 +32,8 @@
 
   <!-- LIST VIEW -->
   <div id="view-list">
-    <div id="filter-bar">
-      <button class="filter-chip active" data-filter="todos">Todos</button>
-      <button class="filter-chip" data-filter="NF-e 55">NF-e 55</button>
-      <button class="filter-chip" data-filter="NFCom 62">NFCom 62</button>
-      <button class="filter-chip" data-filter="NFC-e 65">NFC-e 65</button>
-      <button class="filter-chip" data-filter="NFS-e 13">NFS-e 13</button>
-      <button class="filter-chip" data-filter="SVA">SVA</button>
-      <button class="filter-chip" data-filter="SPED">SPED</button>
-      <button class="filter-chip" data-filter="DICI SCM">DICI SCM</button>
-      <button class="filter-chip" data-filter="DICI PPP">DICI PPP</button>
-      <button class="filter-chip" data-filter="DICI SEAC">DICI SEAC</button>
-    </div>
+    <div id="filter-bar"></div>
+    <div id="subfilter-bar" style="display:none"></div>
     <div id="error-list"></div>
     <div id="empty-state" style="display:none">
       <span>🔍</span>
@@ -69,19 +59,11 @@
     <label>Código / mensagem de erro *</label>
     <input id="f-codigo" type="text" placeholder="Ex: Rejeição 999" />
 
-    <label>Tipo de documento *</label>
-    <div class="form-chips" id="f-tipos">
-      <button class="fchip" data-val="NF-e 55">NF-e 55</button>
-      <button class="fchip" data-val="NFCom 62">NFCom 62</button>
-      <button class="fchip" data-val="NFC-e 65">NFC-e 65</button>
-      <button class="fchip" data-val="NFS-e 13">NFS-e 13</button>
-      <button class="fchip" data-val="SVA">SVA</button>
-      <button class="fchip" data-val="SPED">SPED</button>
-      <button class="fchip" data-val="DICI SCM">DICI SCM</button>
-      <button class="fchip" data-val="DICI PPP">DICI PPP</button>
-      <button class="fchip" data-val="DICI SEAC">DICI SEAC</button>
-      <button class="fchip" data-val="Geral">Geral</button>
-    </div>
+    <label>Categoria *</label>
+    <select id="f-categoria"></select>
+
+    <label id="label-subcategoria" style="display:none">Subcategoria</label>
+    <select id="f-subcategoria" style="display:none"></select>
 
     <label>Causa do erro *</label>
     <textarea id="f-causa" rows="2" placeholder="Por que este erro acontece?"></textarea>

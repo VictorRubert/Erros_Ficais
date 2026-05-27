@@ -1,9 +1,23 @@
+const CATEGORY_TREE = {
+  'NFS-e 13':    ['WebService Local', 'WebService Nacional', 'Erros internos'],
+  'NF-e 55':     ['Devolução', 'Entrada', 'Normal', 'Erros internos'],
+  'NFCom 62':    ['SEFAZ', 'Interno', 'Estaduais'],
+  'NFC-e 65':    [],
+  'SVA/VD':      [],
+  'SPED':        [],
+  'DICI':        ['SCM', 'PPP', 'STFC'],
+  'Certificado': [],
+  'Filial':      [],
+  'DRE':         [],
+};
+
 // ── Dados iniciais (exemplos reais) ───────────────────────────────────
 const INITIAL_ERRORS = [];
 
 // ── Estado ─────────────────────────────────────────────────────────────
 let errors = [];
-let currentFilter = 'todos';
+let currentCategoria   = 'todos';
+let currentSubcategoria = '';
 let searchTerm = '';
 let editingId = null;
 let viewingId = null;
@@ -32,11 +46,95 @@ function fmt(iso) {
 }
 
 function showView(name) {
-  document.getElementById('view-list').style.display   = name === 'list'   ? 'flex' : 'none';
-  document.getElementById('view-detail').style.display = name === 'detail' ? 'block' : 'none';
-  document.getElementById('view-form').style.display   = name === 'form'   ? 'block' : 'none';
-  document.getElementById('search-wrap').style.display = name === 'list'   ? 'block' : 'none';
-  document.getElementById('btn-novo').style.display    = name === 'list'   ? 'block' : 'none';
+  document.getElementById('view-list').style.display    = name === 'list'   ? 'flex'  : 'none';
+  document.getElementById('view-detail').style.display  = name === 'detail' ? 'block' : 'none';
+  document.getElementById('view-form').style.display    = name === 'form'   ? 'block' : 'none';
+  document.getElementById('search-wrap').style.display  = name === 'list'   ? 'block' : 'none';
+  document.getElementById('btn-novo').style.display     = name === 'list'   ? 'block' : 'none';
+  if (name !== 'list') {
+    document.getElementById('subfilter-bar').style.display = 'none';
+  }
+}
+
+// ── Renderiza filtros dinamicamente ───────────────────────────────────
+function renderFilters() {
+  const bar    = document.getElementById('filter-bar');
+  const subbar = document.getElementById('subfilter-bar');
+
+  // Categorias principais
+  const cats = ['todos', ...Object.keys(CATEGORY_TREE)];
+  bar.innerHTML = cats.map(cat => `
+    <button class="filter-chip${cat === currentCategoria ? ' active' : ''}"
+            data-cat="${cat}">
+      ${cat === 'todos' ? 'Todos' : cat}
+    </button>
+  `).join('');
+
+  bar.querySelectorAll('.filter-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentCategoria    = btn.dataset.cat;
+      currentSubcategoria = '';
+      renderFilters();
+      renderList();
+    });
+  });
+
+  // Subcategorias
+  const subs = currentCategoria !== 'todos'
+    ? (CATEGORY_TREE[currentCategoria] || [])
+    : [];
+
+  if (subs.length > 0) {
+    subbar.style.display = 'flex';
+    subbar.innerHTML = [
+      `<button class="filter-chip${currentSubcategoria === '' ? ' active' : ''}" data-sub="">Todos</button>`,
+      ...subs.map(s => `
+        <button class="filter-chip${currentSubcategoria === s ? ' active' : ''}" data-sub="${s}">${s}</button>
+      `)
+    ].join('');
+
+    subbar.querySelectorAll('.filter-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentSubcategoria = btn.dataset.sub;
+        renderFilters();
+        renderList();
+      });
+    });
+  } else {
+    subbar.style.display = 'none';
+    subbar.innerHTML = '';
+  }
+}
+
+// ── Popula selects do formulário ──────────────────────────────────────
+function populateFormSelects(selectedCat = '', selectedSub = '') {
+  const selCat = document.getElementById('f-categoria');
+  const selSub = document.getElementById('f-subcategoria');
+  const lblSub = document.getElementById('label-subcategoria');
+
+  // Categoria
+  selCat.innerHTML = '<option value="">Selecione...</option>' +
+    Object.keys(CATEGORY_TREE).map(cat =>
+      `<option value="${cat}"${cat === selectedCat ? ' selected' : ''}>${cat}</option>`
+    ).join('');
+
+  // Subcategoria
+  const updateSub = (cat) => {
+    const subs = CATEGORY_TREE[cat] || [];
+    if (subs.length > 0) {
+      selSub.innerHTML = '<option value="">Selecione...</option>' +
+        subs.map(s => `<option value="${s}"${s === selectedSub ? ' selected' : ''}>${s}</option>`).join('');
+      selSub.style.display = 'block';
+      lblSub.style.display = 'block';
+    } else {
+      selSub.innerHTML = '';
+      selSub.style.display = 'none';
+      lblSub.style.display = 'none';
+    }
+  };
+
+  updateSub(selectedCat);
+  selCat.addEventListener('change', () => updateSub(selCat.value));
 }
 
 // ── Render list ────────────────────────────────────────────────────────
@@ -45,14 +143,17 @@ function renderList() {
   const empty = document.getElementById('empty-state');
 
   let filtered = errors.filter(e => {
-    const matchFilter = currentFilter === 'todos' || e.tipo === currentFilter;
-    const q = searchTerm.toLowerCase();
-    const matchSearch = !q ||
-      e.codigo.toLowerCase().includes(q) ||
-      e.causa.toLowerCase().includes(q) ||
-      e.tipo.toLowerCase().includes(q) ||
-      (e.resolucao && e.resolucao.toLowerCase().includes(q));
-    return matchFilter && matchSearch;
+  const cat = e.categoria || e.tipo || '';
+  const sub = e.subcategoria || '';
+  const matchCat = currentCategoria === 'todos' || cat === currentCategoria;
+  const matchSub = !currentSubcategoria || sub === currentSubcategoria;
+  const q = searchTerm.toLowerCase();
+  const matchSearch = !q ||
+    (e.codigo     || '').toLowerCase().includes(q) ||
+    (e.causa      || '').toLowerCase().includes(q) ||
+    (cat          || '').toLowerCase().includes(q) ||
+    (e.resolucao  || '').toLowerCase().includes(q);
+  return matchCat && matchSub && matchSearch;
   });
 
   filtered.sort((a, b) => new Date(b.data) - new Date(a.data));
@@ -88,7 +189,7 @@ function openDetail(id) {
 
   document.getElementById('detail-content').innerHTML = `
     <div class="detail-code">${e.codigo}</div>
-    <span class="detail-badge">${e.tipo}</span>
+    <span class="detail-badge">${e.categoria || e.tipo || ''}${e.subcategoria ? ' › ' + e.subcategoria : ''}</span>
     <div class="detail-section">
       <div class="detail-section-label">Causa</div>
       <div class="detail-section-body">${e.causa}</div>
@@ -123,14 +224,14 @@ function openForm(id = null) {
     document.getElementById('f-resolucao').value = e.resolucao;
     document.getElementById('f-perguntar').value = e.perguntar || '';
     document.getElementById('f-autor').value     = e.autor || '';
-    const chip = document.querySelector(`.fchip[data-val="${e.tipo}"]`);
-    if (chip) chip.classList.add('on');
+    populateFormSelects(e.categoria || e.tipo || '', e.subcategoria || '');
   } else {
     document.getElementById('f-codigo').value    = '';
     document.getElementById('f-causa').value     = '';
     document.getElementById('f-resolucao').value = '';
     document.getElementById('f-perguntar').value = '';
     document.getElementById('f-autor').value     = '';
+    populateFormSelects();
   }
 
   showView('form');
@@ -142,12 +243,12 @@ function saveForm() {
   const resolucao = document.getElementById('f-resolucao').value.trim();
   const perguntar = document.getElementById('f-perguntar').value.trim();
   const autor     = document.getElementById('f-autor').value.trim();
-  const tipoEl    = document.querySelector('.fchip.on');
-  const tipo      = tipoEl ? tipoEl.dataset.val : '';
+  const categoria    = document.getElementById('f-categoria').value;
+  const subcategoria = document.getElementById('f-subcategoria').value;
 
   const err = document.getElementById('form-error');
   if (!codigo) { err.textContent = 'Informe o código ou mensagem de erro.'; return; }
-  if (!tipo)   { err.textContent = 'Selecione o tipo de documento.'; return; }
+  if (!categoria)   { err.textContent = 'Selecione o tipo de documento.'; return; }
   if (!causa)  { err.textContent = 'Informe a causa do erro.'; return; }
   if (!resolucao) { err.textContent = 'Informe a resolução.'; return; }
 
@@ -159,7 +260,7 @@ function saveForm() {
   } else {
     const novo = {
       id: 'e' + Date.now(),
-      codigo, tipo, causa, resolucao, perguntar, autor,
+      codigo, categoria, subcategoria, causa, resolucao, perguntar, autor,
       data: new Date().toISOString(),
     };
     errors.unshift(novo);
@@ -193,20 +294,5 @@ document.getElementById('search').addEventListener('input', e => {
   renderList();
 });
 
-document.querySelectorAll('.filter-chip').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentFilter = btn.dataset.filter;
-    renderList();
-  });
-});
-
-document.querySelectorAll('.fchip').forEach(b => {
-  b.addEventListener('click', () => {
-    document.querySelectorAll('.fchip').forEach(x => x.classList.remove('on'));
-    b.classList.add('on');
-  });
-});
-
+renderFilters();
 showView('list');
