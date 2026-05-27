@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Diário de Erros Fiscais</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ── Header ─────────────────────────────────────── -->
+  <header>
+    <div id="header-left">
+      <span id="logo">
+        <img src="icon.png" alt="Logo" width="50" height="50" />
+      </span>
+      <div>
+        <div id="app-title">Diário de Erros</div>
+        <div id="app-sub">IXC Provedor · Suporte Fiscal</div>
+      </div>
+    </div>
+    <button id="btn-novo" title="Cadastrar novo erro">+ Novo</button>
+  </header>
+
+  <!-- ── Search ─────────────────────────────────────── -->
+  <div id="search-wrap">
+    <input id="search" type="text" placeholder="Buscar por código, descrição ou tipo..." autocomplete="off" />
+  </div>
+
+  <!-- ── Views ──────────────────────────────────────── -->
+
+  <!-- LIST VIEW -->
+  <div id="view-list">
+    <div id="filter-bar">
+      <button class="filter-chip active" data-filter="todos">Todos</button>
+      <button class="filter-chip" data-filter="NF-e 55">NF-e 55</button>
+      <button class="filter-chip" data-filter="NFCom 62">NFCom 62</button>
+      <button class="filter-chip" data-filter="NFC-e 65">NFC-e 65</button>
+      <button class="filter-chip" data-filter="NFS-e 13">NFS-e 13</button>
+      <button class="filter-chip" data-filter="SVA">SVA</button>
+      <button class="filter-chip" data-filter="SPED">SPED</button>
+      <button class="filter-chip" data-filter="DICI SCM">DICI SCM</button>
+      <button class="filter-chip" data-filter="DICI PPP">DICI PPP</button>
+      <button class="filter-chip" data-filter="DICI SEAC">DICI SEAC</button>
+    </div>
+    <div id="error-list"></div>
+    <div id="empty-state" style="display:none">
+      <span>🔍</span>
+      <p>Nenhum erro encontrado.</p>
+      <small>Tente outro termo ou cadastre um novo.</small>
+    </div>
+  </div>
+
+  <!-- DETAIL VIEW -->
+  <div id="view-detail" style="display:none">
+    <button id="btn-back">← Voltar</button>
+    <div id="detail-content"></div>
+    <div id="detail-actions">
+      <button id="btn-edit">Editar</button>
+      <button id="btn-delete">Excluir</button>
+    </div>
+  </div>
+
+  <!-- FORM VIEW -->
+  <div id="view-form" style="display:none">
+    <div id="form-title">Cadastrar erro</div>
+
+    <label>Código / mensagem de erro *</label>
+    <input id="f-codigo" type="text" placeholder="Ex: Rejeição 999" />
+
+    <label>Tipo de documento *</label>
+    <div class="form-chips" id="f-tipos">
+      <button class="fchip" data-val="NF-e 55">NF-e 55</button>
+      <button class="fchip" data-val="NFCom 62">NFCom 62</button>
+      <button class="fchip" data-val="NFC-e 65">NFC-e 65</button>
+      <button class="fchip" data-val="NFS-e 13">NFS-e 13</button>
+      <button class="fchip" data-val="SVA">SVA</button>
+      <button class="fchip" data-val="SPED">SPED</button>
+      <button class="fchip" data-val="DICI SCM">DICI SCM</button>
+      <button class="fchip" data-val="DICI PPP">DICI PPP</button>
+      <button class="fchip" data-val="DICI SEAC">DICI SEAC</button>
+      <button class="fchip" data-val="Geral">Geral</button>
+    </div>
+
+    <label>Causa do erro *</label>
+    <textarea id="f-causa" rows="2" placeholder="Por que este erro acontece?"></textarea>
+
+    <label>Resolução no IXC *</label>
+    <textarea id="f-resolucao" rows="4" placeholder="Passo a passo para resolver dentro do IXC Provedor..."></textarea>
+
+    <label>O que perguntar ao cliente (opcional)</label>
+    <textarea id="f-perguntar" rows="2" placeholder="Informações a solicitar se o erro persistir..."></textarea>
+
+    <label>Registrado por</label>
+    <input id="f-autor" type="text" placeholder="Seu nome" />
+
+    <div id="form-error"></div>
+
+    <div id="form-actions">
+      <button id="btn-cancelar">Cancelar</button>
+      <button id="btn-salvar">Salvar erro</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>
