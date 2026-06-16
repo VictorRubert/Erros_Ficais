@@ -1,9 +1,11 @@
+const API_URL = "https://restapi-fiscal.onrender.com";
+
 const CATEGORY_TREE = {
   'NFS-e 13':    ['WebService Local', 'WebService Nacional', 'Erros internos'],
   'NF-e 55':     ['Devolução', 'Entrada', 'Normal', 'Erros internos'],
   'NFCom 62':    ['SEFAZ', 'Interno', 'Estaduais'],
   'NFC-e 65':    [],
-  'SVA/VD':      [],
+  'SVA':         [],
   'SPED':        [],
   'DICI':        ['SCM', 'PPP', 'STFC'],
   'Certificado': [],
@@ -11,8 +13,37 @@ const CATEGORY_TREE = {
   'DRE':         [],
 };
 
-// ── Dados iniciais (exemplos reais) ───────────────────────────────────
-const INITIAL_ERRORS = [];
+// ── Carrega nome do usuário do storage local ───────────────────────────
+function loadChromeUserName() {
+  const nomeCampo = document.getElementById('f-autor');
+  if (!nomeCampo) return;
+
+  chrome.storage.local.get(['userName'], (res) => {
+    if (res.userName) {
+      nomeCampo.value = res.userName;
+      nomeCampo.disabled = true;
+      nomeCampo.title = 'Preenchido automaticamente (clique em Editar para mudar)';
+      return;
+    }
+
+    nomeCampo.value = '';
+    nomeCampo.disabled = false;
+    nomeCampo.placeholder = 'Seu nome (será salvo)';
+    nomeCampo.title = 'Preencha seu nome na primeira vez';
+  });
+}
+
+function saveUserName() {
+  const nomeCampo = document.getElementById('f-autor');
+  const nome = nomeCampo.value.trim();
+  
+  if (nome) {
+    chrome.storage.local.set({ userName: nome }, () => {
+      nomeCampo.disabled = true;
+      nomeCampo.title = 'Preenchido automaticamente (clique em Editar para mudar)';
+    });
+  }
+}
 
 // ── Estado ─────────────────────────────────────────────────────────────
 let errors = [];
@@ -23,26 +54,26 @@ let editingId = null;
 let viewingId = null;
 
 // ── Init ───────────────────────────────────────────────────────────────
-chrome.storage.local.get(['fiscal_errors', 'initialized'], (res) => {
-  if (!res.initialized) {
-    chrome.storage.local.set({ fiscal_errors: INITIAL_ERRORS, initialized: true }, () => {
-      errors = INITIAL_ERRORS;
-      renderList();
-    });
-  } else {
-    errors = res.fiscal_errors || [];
+async function loadErrors() {
+  try {
+    const response = await fetch(`${API_URL}/erros`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    errors = await response.json();
+    renderList();
+  } catch (err) {
+    console.error('Erro ao carregar erros:', err);
+    errors = [];
     renderList();
   }
-});
-
-// ── Helpers ────────────────────────────────────────────────────────────
-function save() {
-  chrome.storage.local.set({ fiscal_errors: errors });
 }
 
+loadErrors();
+
+// ── Helpers ────────────────────────────────────────────────────────────
 function fmt(iso) {
+  if (!iso) return '';
   const d = new Date(iso);
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+  return isNaN(d) ? iso : d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function showView(name) {
@@ -61,7 +92,6 @@ function renderFilters() {
   const bar    = document.getElementById('filter-bar');
   const subbar = document.getElementById('subfilter-bar');
 
-  // Categorias principais
   const cats = ['todos', ...Object.keys(CATEGORY_TREE)];
   bar.innerHTML = cats.map(cat => `
     <button class="filter-chip${cat === currentCategoria ? ' active' : ''}"
@@ -79,7 +109,6 @@ function renderFilters() {
     });
   });
 
-  // Subcategorias
   const subs = currentCategoria !== 'todos'
     ? (CATEGORY_TREE[currentCategoria] || [])
     : [];
@@ -112,13 +141,11 @@ function populateFormSelects(selectedCat = '', selectedSub = '') {
   const selSub = document.getElementById('f-subcategoria');
   const lblSub = document.getElementById('label-subcategoria');
 
-  // Categoria
   selCat.innerHTML = '<option value="">Selecione...</option>' +
     Object.keys(CATEGORY_TREE).map(cat =>
       `<option value="${cat}"${cat === selectedCat ? ' selected' : ''}>${cat}</option>`
     ).join('');
 
-  // Subcategoria
   const updateSub = (cat) => {
     const subs = CATEGORY_TREE[cat] || [];
     if (subs.length > 0) {
@@ -143,20 +170,20 @@ function renderList() {
   const empty = document.getElementById('empty-state');
 
   let filtered = errors.filter(e => {
-  const cat = e.categoria || e.tipo || '';
-  const sub = e.subcategoria || '';
-  const matchCat = currentCategoria === 'todos' || cat === currentCategoria;
-  const matchSub = !currentSubcategoria || sub === currentSubcategoria;
-  const q = searchTerm.toLowerCase();
-  const matchSearch = !q ||
-    (e.codigo     || '').toLowerCase().includes(q) ||
-    (e.causa      || '').toLowerCase().includes(q) ||
-    (cat          || '').toLowerCase().includes(q) ||
-    (e.resolucao  || '').toLowerCase().includes(q);
-  return matchCat && matchSub && matchSearch;
+    const cat = e.categoria || e.tipo || '';
+    const sub = e.subcategoria || '';
+    const matchCat = currentCategoria === 'todos' || cat === currentCategoria;
+    const matchSub = !currentSubcategoria || sub === currentSubcategoria;
+    const q = searchTerm.toLowerCase();
+    const matchSearch = !q ||
+      (e.codigo     || '').toLowerCase().includes(q) ||
+      (e.causa      || '').toLowerCase().includes(q) ||
+      (cat          || '').toLowerCase().includes(q) ||
+      (e.resolucao  || '').toLowerCase().includes(q);
+    return matchCat && matchSub && matchSearch;
   });
 
-  filtered.sort((a, b) => new Date(b.data) - new Date(a.data));
+  filtered.sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0));
 
   if (filtered.length === 0) {
     list.innerHTML = '';
@@ -169,7 +196,7 @@ function renderList() {
     <div class="error-item" data-id="${e.id}">
       <div class="ei-header">
         <span class="ei-code">${e.codigo}</span>
-        <span class="ei-badge">${e.tipo}</span>
+        <span class="ei-badge">${e.categoria || e.tipo || ''}</span>
       </div>
       <div class="ei-causa">${e.causa}</div>
       <div class="ei-meta">${e.autor ? e.autor + ' · ' : ''}${fmt(e.data)}</div>
@@ -183,7 +210,7 @@ function renderList() {
 
 // ── Detail ─────────────────────────────────────────────────────────────
 function openDetail(id) {
-  const e = errors.find(x => x.id === id);
+  const e = errors.find(x => String(x.id) === String(id));
   if (!e) return;
   viewingId = id;
 
@@ -212,32 +239,38 @@ function openDetail(id) {
 // ── Form ───────────────────────────────────────────────────────────────
 function openForm(id = null) {
   editingId = id;
+  loadChromeUserName();
   document.getElementById('form-title').textContent = id ? 'Editar erro' : 'Cadastrar erro';
   document.getElementById('form-error').textContent = '';
 
-  document.querySelectorAll('.fchip').forEach(b => b.classList.remove('on'));
-
   if (id) {
-    const e = errors.find(x => x.id === id);
-    document.getElementById('f-codigo').value    = e.codigo;
-    document.getElementById('f-causa').value     = e.causa;
-    document.getElementById('f-resolucao').value = e.resolucao;
-    document.getElementById('f-perguntar').value = e.perguntar || '';
-    document.getElementById('f-autor').value     = e.autor || '';
-    populateFormSelects(e.categoria || e.tipo || '', e.subcategoria || '');
+    const e = errors.find(x => String(x.id) === String(id));
+    if (e) {
+      document.getElementById('f-codigo').value    = e.codigo;
+      document.getElementById('f-causa').value     = e.causa;
+      document.getElementById('f-resolucao').value = e.resolucao;
+      document.getElementById('f-perguntar').value = e.perguntar || '';
+      populateFormSelects(e.categoria || e.tipo || '', e.subcategoria || '');
+    }
   } else {
     document.getElementById('f-codigo').value    = '';
     document.getElementById('f-causa').value     = '';
     document.getElementById('f-resolucao').value = '';
     document.getElementById('f-perguntar').value = '';
-    document.getElementById('f-autor').value     = '';
     populateFormSelects();
   }
+
+  setTimeout(() => {
+    const nomeCampo = document.getElementById('f-autor');
+    if (!nomeCampo.value) {
+      nomeCampo.disabled = false;
+    }
+  }, 100);
 
   showView('form');
 }
 
-function saveForm() {
+async function saveForm() {
   const codigo    = document.getElementById('f-codigo').value.trim();
   const causa     = document.getElementById('f-causa').value.trim();
   const resolucao = document.getElementById('f-resolucao').value.trim();
@@ -248,34 +281,55 @@ function saveForm() {
 
   const err = document.getElementById('form-error');
   if (!codigo) { err.textContent = 'Informe o código ou mensagem de erro.'; return; }
-  if (!categoria)   { err.textContent = 'Selecione o tipo de documento.'; return; }
-  if (!causa)  { err.textContent = 'Informe a causa do erro.'; return; }
+  if (!categoria) { err.textContent = 'Selecione o tipo de documento.'; return; }
+  if (!causa) { err.textContent = 'Informe a causa do erro.'; return; }
   if (!resolucao) { err.textContent = 'Informe a resolução.'; return; }
 
-  if (editingId) {
-    const idx = errors.findIndex(x => x.id === editingId);
-    errors[idx] = { ...errors[idx], codigo, tipo, causa, resolucao, perguntar, autor };
-    save();
-    openDetail(editingId);
-  } else {
-    const novo = {
-      id: 'e' + Date.now(),
-      codigo, categoria, subcategoria, causa, resolucao, perguntar, autor,
-      data: new Date().toISOString(),
-    };
-    errors.unshift(novo);
-    save();
+  try {
+    const payload = { codigo, categoria, subcategoria, causa, resolucao, perguntar, autor };
+
+    if (editingId) {
+      const response = await fetch(`${API_URL}/erros/${editingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    } else {
+      const response = await fetch(`${API_URL}/erros`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    }
+
+    saveUserName();
+    await loadErrors();
     renderList();
     showView('list');
+  } catch (error) {
+    console.error('Erro ao salvar:', error);
+    err.textContent = 'Erro ao salvar. Tente novamente.';
   }
 }
 
-function deleteError(id) {
+async function deleteError(id) {
   if (!confirm('Excluir este erro?')) return;
-  errors = errors.filter(x => x.id !== id);
-  save();
-  renderList();
-  showView('list');
+
+  try {
+    const response = await fetch(`${API_URL}/erros/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    await loadErrors();
+    renderList();
+    showView('list');
+  } catch (error) {
+    console.error('Erro ao excluir:', error);
+    alert('Erro ao excluir. Tente novamente.');
+  }
 }
 
 // ── Events ─────────────────────────────────────────────────────────────

@@ -3,7 +3,10 @@
   "name": "Diário de Erros Fiscais — IXC",
   "version": "1.0.0",
   "description": "Base de conhecimento de erros fiscais do IXC Provedor. Busque e cadastre erros com um clique.",
-  "permissions": ["storage"],
+  "permissions": ["storage", "identity"],
+  "host_permissions": [
+    "https://restapi-fiscal.onrender.com/*"
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
