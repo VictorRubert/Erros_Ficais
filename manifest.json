@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Guia de Erros Fiscais",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Base de conhecimento de erros fiscais do IXC Provedor. Busque e cadastre erros com um clique.",
   "permissions": ["storage"],
   "host_permissions": [

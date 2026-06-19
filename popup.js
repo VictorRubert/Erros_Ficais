@@ -53,17 +53,37 @@ let searchTerm = '';
 let editingId = null;
 let viewingId = null;
 
+function showLoading() {
+  document.getElementById('loading-state').style.display = 'flex';
+  document.getElementById('error-list').style.display = 'none';
+  document.getElementById('empty-state').style.display = 'none';
+}
+
+function hideLoading() {
+  document.getElementById('loading-state').style.display = 'none';
+  document.getElementById('error-list').style.display = 'block';
+}
+
 // ── Init ───────────────────────────────────────────────────────────────
 async function loadErrors() {
+  showLoading();
+
   try {
     const response = await fetch(`${API_URL}/erros`);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
     errors = await response.json();
+
     renderList();
   } catch (err) {
     console.error('Erro ao carregar erros:', err);
     errors = [];
     renderList();
+  } finally {
+    hideLoading();
   }
 }
 
