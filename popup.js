@@ -57,11 +57,30 @@ function showLoading() {
   document.getElementById('loading-state').style.display = 'flex';
   document.getElementById('error-list').style.display = 'none';
   document.getElementById('empty-state').style.display = 'none';
+
+  const apiError = document.getElementById('api-error-state');
+  if (apiError) apiError.style.display = 'none';
 }
 
 function hideLoading() {
   document.getElementById('loading-state').style.display = 'none';
+}
+
+function showApiError() {
+  document.getElementById('loading-state').style.display = 'none';
+  document.getElementById('error-list').style.display = 'none';
+  document.getElementById('empty-state').style.display = 'none';
+
+  const apiError = document.getElementById('api-error-state');
+  if (apiError) apiError.style.display = 'block';
+}
+
+function showListArea() {
+  document.getElementById('loading-state').style.display = 'none';
   document.getElementById('error-list').style.display = 'block';
+
+  const apiError = document.getElementById('api-error-state');
+  if (apiError) apiError.style.display = 'none';
 }
 
 // ── Init ───────────────────────────────────────────────────────────────
@@ -72,16 +91,20 @@ async function loadErrors() {
     const response = await fetch(`${API_URL}/erros`);
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      throw new Error(`Erro HTTP ${response.status}`);
     }
 
     errors = await response.json();
 
+    showListArea();
     renderList();
+
   } catch (err) {
     console.error('Erro ao carregar erros:', err);
+
     errors = [];
-    renderList();
+    showApiError();
+
   } finally {
     hideLoading();
   }
@@ -298,6 +321,10 @@ async function saveForm() {
   const autor     = document.getElementById('f-autor').value.trim();
   const categoria    = document.getElementById('f-categoria').value;
   const subcategoria = document.getElementById('f-subcategoria').value;
+  const btnSalvar = document.getElementById('btn-salvar');
+
+  btnSalvar.disabled = true;
+  btnSalvar.textContent = 'Salvando...';
 
   const err = document.getElementById('form-error');
   if (!codigo) { err.textContent = 'Informe o código ou mensagem de erro.'; return; }
@@ -330,25 +357,42 @@ async function saveForm() {
     showView('list');
   } catch (error) {
     console.error('Erro ao salvar:', error);
-    err.textContent = 'Erro ao salvar. Tente novamente.';
+
+    err.textContent =
+      'Não foi possível salvar o erro. Verifique sua conexão e tente novamente.';
+  }
+  finally {
+    btnSalvar.disabled = false;
+    btnSalvar.textContent = 'Salvar erro';
   }
 }
 
 async function deleteError(id) {
   if (!confirm('Excluir este erro?')) return;
 
+  const btnDelete = document.getElementById('btn-delete');
+  btnDelete.disabled = true;
+  btnDelete.textContent = 'Excluindo...';
+
   try {
     const response = await fetch(`${API_URL}/erros/${id}`, {
       method: 'DELETE'
     });
+
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
     await loadErrors();
     renderList();
     showView('list');
+
   } catch (error) {
     console.error('Erro ao excluir:', error);
-    alert('Erro ao excluir. Tente novamente.');
+
+    alert('Não foi possível excluir este erro. Verifique sua conexão e tente novamente.');
+
+  } finally {
+    btnDelete.disabled = false;
+    btnDelete.textContent = 'Excluir';
   }
 }
 
@@ -362,6 +406,12 @@ document.getElementById('btn-cancelar').addEventListener('click', () => {
   if (editingId) { openDetail(editingId); }
   else { renderList(); showView('list'); }
 });
+
+const retryButton = document.getElementById('btn-retry-load');
+
+if (retryButton) {
+  retryButton.addEventListener('click', loadErrors);
+}
 
 document.getElementById('search').addEventListener('input', e => {
   searchTerm = e.target.value;
